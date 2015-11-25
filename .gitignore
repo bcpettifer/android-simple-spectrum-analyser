@@ -25,6 +25,15 @@ proguard/
 # Log Files
 *.log
 
+# Android Studio files
+.idea/workspace.xml
+.idea/libraries
+.idea/
+*.iml
+
+# Other
+captures/
+
 # =========================
 # Operating System Files
 # =========================
