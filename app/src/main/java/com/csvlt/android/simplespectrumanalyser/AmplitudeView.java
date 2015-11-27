@@ -45,6 +45,7 @@ public class AmplitudeView extends View {
 
     private Normaliser mNormaliser;
     private float mBandSize;
+    private Rect mClipBounds = new Rect();
 
     public AmplitudeView(Context context) {
         super(context);
@@ -162,18 +163,18 @@ public class AmplitudeView extends View {
             mBandSize = canvas.getWidth() / (float) MAX_DATA_POINTS;
         }
 
-        Rect clipBounds = canvas.getClipBounds();
+        mClipBounds = canvas.getClipBounds();
+        canvas.getClipBounds(mClipBounds);
 
-        if (clipBounds != null && !clipBounds.isEmpty()) {
-            int argbColour = Color.argb(200, mRandom.nextInt(255), mRandom.nextInt(255), mRandom.nextInt(255));
+        if (!mClipBounds.isEmpty()) {
             readMeanAmplitude();
             int amplitude = mMeanAmplitude; //mRandom.nextInt(canvas.getHeight());
             int normalisedAmplitude = mNormaliser.normalise(amplitude);
-            mColours[mPos] = argbColour;
+            preparePaintProperties(mPos);
             mAmplitudes[mPos] = normalisedAmplitude;
 
             for (int i=0; i<MAX_DATA_POINTS; i++) {
-                mPaint.setColor(mColours[i]);
+                setPaintProperties(mPaint, i);
                 canvas.drawRect(i* mBandSize, mNormaliser.height-mAmplitudes[i], i* mBandSize + mBandSize, mNormaliser.height, mPaint);
             }
 
@@ -182,6 +183,15 @@ public class AmplitudeView extends View {
             float cursorPos = mPos* mBandSize + mBandSize;
             canvas.drawLine(cursorPos, 0, cursorPos, mNormaliser.height, mPaint);
         }
+    }
+
+    private void preparePaintProperties(int pos) {
+        int argbColour = Color.argb(200, mRandom.nextInt(255), mRandom.nextInt(255), mRandom.nextInt(255));
+        mColours[pos] = argbColour;
+    }
+
+    private void setPaintProperties(Paint p, int i) {
+        p.setColor(mColours[i]);
     }
 
     private static class Normaliser {
