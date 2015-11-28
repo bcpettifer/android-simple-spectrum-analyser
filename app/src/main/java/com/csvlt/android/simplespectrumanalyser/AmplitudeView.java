@@ -3,8 +3,10 @@ package com.csvlt.android.simplespectrumanalyser;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.Shader;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -41,7 +43,7 @@ public class AmplitudeView extends View {
     Runnable mRunnable;
     private Paint mPaint;
     private int[] mAmplitudes = new int[MAX_DATA_POINTS];
-    private int[] mColours = new int[MAX_DATA_POINTS];
+    private Shader mShader;
 
     private Normaliser mNormaliser;
     private float mBandSize;
@@ -163,18 +165,16 @@ public class AmplitudeView extends View {
             mBandSize = canvas.getWidth() / (float) MAX_DATA_POINTS;
         }
 
-        mClipBounds = canvas.getClipBounds();
         canvas.getClipBounds(mClipBounds);
 
         if (!mClipBounds.isEmpty()) {
             readMeanAmplitude();
             int amplitude = mMeanAmplitude; //mRandom.nextInt(canvas.getHeight());
             int normalisedAmplitude = mNormaliser.normalise(amplitude);
-            preparePaintProperties(mPos);
             mAmplitudes[mPos] = normalisedAmplitude;
 
+            mPaint.setShader(getAmplitudeLineShader());
             for (int i=0; i<MAX_DATA_POINTS; i++) {
-                setPaintProperties(mPaint, i);
                 canvas.drawRect(i* mBandSize, mNormaliser.height-mAmplitudes[i], i* mBandSize + mBandSize, mNormaliser.height, mPaint);
             }
 
@@ -185,13 +185,13 @@ public class AmplitudeView extends View {
         }
     }
 
-    private void preparePaintProperties(int pos) {
-        int argbColour = Color.argb(200, mRandom.nextInt(255), mRandom.nextInt(255), mRandom.nextInt(255));
-        mColours[pos] = argbColour;
-    }
+    private Shader getAmplitudeLineShader() {
+        if (mShader == null) {
+            int[] gradientColours = new int[] {Color.RED, Color.YELLOW, Color.GREEN };
+            mShader = new LinearGradient(0, 0, 0, mNormaliser.height, gradientColours, null, Shader.TileMode.MIRROR);
 
-    private void setPaintProperties(Paint p, int i) {
-        p.setColor(mColours[i]);
+        }
+        return mShader;
     }
 
     private static class Normaliser {
