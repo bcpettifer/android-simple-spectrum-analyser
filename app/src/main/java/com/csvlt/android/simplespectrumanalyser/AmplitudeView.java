@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import java.util.Random;
 import java.util.concurrent.Executor;
@@ -79,6 +80,30 @@ public class AmplitudeView extends View {
         mReadExecutor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
 
         startAudioRecord();
+
+        // Set up values that require the view to have been measured (i.e. require height and width values)
+        this.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                try {
+                    int viewHeight = AmplitudeView.this.getHeight();
+                    int viewWidth = AmplitudeView.this.getWidth();
+                    if (mNormaliser.height == 0) {
+                        mNormaliser.height = viewHeight;
+                    }
+                    if (mBandSize == 0) {
+                        mBandSize = viewWidth / (float) MAX_DATA_POINTS;
+                    }
+                    if (mShader == null) {
+                        int[] gradientColours = new int[] {Color.RED, Color.YELLOW, Color.GREEN };
+                        mShader = new LinearGradient(0, 0, 0, mNormaliser.height, gradientColours, null, Shader.TileMode.MIRROR);
+                    }
+                    return true;
+                } finally {
+                    AmplitudeView.this.getViewTreeObserver().removeOnPreDrawListener(this);
+                }
+            }
+        });
 
         mHandler = new Handler();
         mRunnable = new Runnable() {
@@ -158,13 +183,6 @@ public class AmplitudeView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        if (mNormaliser.height == 0) {
-            mNormaliser.height = canvas.getHeight();
-        }
-        if (mBandSize == 0) {
-            mBandSize = canvas.getWidth() / (float) MAX_DATA_POINTS;
-        }
-
         canvas.getClipBounds(mClipBounds);
 
         if (!mClipBounds.isEmpty()) {
@@ -173,7 +191,7 @@ public class AmplitudeView extends View {
             int normalisedAmplitude = mNormaliser.normalise(amplitude);
             mAmplitudes[mPos] = normalisedAmplitude;
 
-            mPaint.setShader(getAmplitudeLineShader());
+            mPaint.setShader(mShader);
             for (int i=0; i<MAX_DATA_POINTS; i++) {
                 canvas.drawRect(i* mBandSize, mNormaliser.height-mAmplitudes[i], i* mBandSize + mBandSize, mNormaliser.height, mPaint);
             }
@@ -183,15 +201,6 @@ public class AmplitudeView extends View {
             float cursorPos = mPos* mBandSize + mBandSize;
             canvas.drawLine(cursorPos, 0, cursorPos, mNormaliser.height, mPaint);
         }
-    }
-
-    private Shader getAmplitudeLineShader() {
-        if (mShader == null) {
-            int[] gradientColours = new int[] {Color.RED, Color.YELLOW, Color.GREEN };
-            mShader = new LinearGradient(0, 0, 0, mNormaliser.height, gradientColours, null, Shader.TileMode.MIRROR);
-
-        }
-        return mShader;
     }
 
     private static class Normaliser {
