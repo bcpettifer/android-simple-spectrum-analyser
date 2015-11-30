@@ -139,8 +139,12 @@ public class AmplitudeView extends View {
     }
 
     private void stopAudioRecord() {
-        if (mAudioRecord != null) {
-            mAudioRecord.stop();
+        if (mAudioRecord != null && mAudioRecord.getState() != AudioRecord.STATE_UNINITIALIZED) {
+            if (mAudioRecord.getState() != AudioRecord.RECORDSTATE_STOPPED) {
+                mAudioRecord.stop();
+            }
+            mAudioRecord.release();
+            mAudioRecord = null;
         }
     }
 
