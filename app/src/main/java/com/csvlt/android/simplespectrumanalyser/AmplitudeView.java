@@ -7,22 +7,18 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Shader;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
 import android.os.Handler;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
+import com.csvlt.android.simplespectrumanalyser.audio.Recorder;
+import com.csvlt.android.simplespectrumanalyser.audio.SimpleRecorder;
+
 import java.util.Random;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * Simple custom view that reads input from the mic and displays the amplitude.
- * TODO: Move the audio record logic out of the view. It doesn't belong here.
  */
 public class AmplitudeView extends View {
 
@@ -31,12 +27,7 @@ public class AmplitudeView extends View {
     static final int MAX_DATA_POINTS = 500;
     static final int CURSOR_COLOUR = Color.GREEN;
 
-    private static final int SAMPLE_RATE = 44100;
-    public static final int CORE_POOL_SIZE = 4;
-    private int mMinBufferSize;
-    private Executor mReadExecutor;
-    private AudioRecord mAudioRecord = null;
-    private int mMeanAmplitude;
+    private Recorder mAudioRecord;
 
     private Random mRandom;
     private int mPos;
@@ -73,12 +64,9 @@ public class AmplitudeView extends View {
 
         // Initialise audio record settings
         mNormaliser = new Normaliser();
-        mMinBufferSize = AudioRecord.getMinBufferSize(
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT);
-        mReadExecutor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
 
+        // TODO: Use dependency injection rather than creating this here.
+        mAudioRecord = new SimpleRecorder();
         startAudioRecord();
 
         // Set up values that require the view to have been measured (i.e. require height and width values)
@@ -109,6 +97,10 @@ public class AmplitudeView extends View {
         mRunnable = new Runnable() {
             @Override
             public void run() {
+                // TODO: consider separating the audio record control into a separate audio controller loop
+                if (mAudioRecord != null) {
+                    mAudioRecord.read();
+                }
                 invalidate();
                 mHandler.postDelayed(this, INTERVAL);
                 mPos += 1;
@@ -118,55 +110,15 @@ public class AmplitudeView extends View {
     }
 
     private void startAudioRecord() {
-        if (mAudioRecord == null) {
-            try {
-                mAudioRecord = new AudioRecord(
-                        MediaRecorder.AudioSource.MIC,
-                        SAMPLE_RATE,
-                        AudioFormat.CHANNEL_IN_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT,
-                        mMinBufferSize);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Could not start: " + e.getMessage());
-            }
-        }
-
-        try {
-            mAudioRecord.startRecording();
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "Could not start: " + e.getMessage());
+        if (mAudioRecord != null) {
+            mAudioRecord.start();
         }
     }
 
     private void stopAudioRecord() {
-        if (mAudioRecord != null && mAudioRecord.getState() != AudioRecord.STATE_UNINITIALIZED) {
-            if (mAudioRecord.getState() != AudioRecord.RECORDSTATE_STOPPED) {
-                mAudioRecord.stop();
-            }
-            mAudioRecord.release();
-            mAudioRecord = null;
+        if (mAudioRecord != null) {
+            mAudioRecord.stop();
         }
-    }
-
-    private void readMeanAmplitude() {
-        mReadExecutor.execute(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        int sum = 0;
-                        short[] buffer = new short[mMinBufferSize];
-                        if (mAudioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
-                            mAudioRecord.read(buffer, 0, mMinBufferSize);
-                        }
-
-                        for (short sample : buffer) {
-                            sum += sample;
-                        }
-
-                        mMeanAmplitude = Math.abs(sum / mMinBufferSize);
-                    }
-                }
-        );
     }
 
     @Override
@@ -190,8 +142,10 @@ public class AmplitudeView extends View {
         canvas.getClipBounds(mClipBounds);
 
         if (!mClipBounds.isEmpty()) {
-            readMeanAmplitude();
-            int amplitude = mMeanAmplitude; //mRandom.nextInt(canvas.getHeight());
+            int amplitude = 0; //mRandom.nextInt(canvas.getHeight());
+            if (mAudioRecord != null) {
+                amplitude = mAudioRecord.getMeanAmplitude();
+            }
             int normalisedAmplitude = mNormaliser.normalise(amplitude);
             mAmplitudes[mPos] = normalisedAmplitude;
 
