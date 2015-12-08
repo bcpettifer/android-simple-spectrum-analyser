@@ -1,5 +1,6 @@
 package com.csvlt.android.simplespectrumanalyser.utils;
 
+import android.animation.ArgbEvaluator;
 import android.graphics.Color;
 
 import java.util.Random;
@@ -15,19 +16,26 @@ public class ColourShifter {
     private static final int COLOUR_FRAME_COUNT_THRESHOLD = 600;
     private int mFrameCount;
 
+    private static final int DEFAULT_ALPHA = 255;
+    private int mAlpha = DEFAULT_ALPHA;
     private int mColour;
     private int mTargetColour;
 
     public ColourShifter() {
-        this(pickColour());
+        init(pickColour());
     }
 
     public ColourShifter(int initialColour) {
-        mColour = initialColour;
+        init(initialColour);
     }
 
-    private static int pickColour() {
-        return Color.rgb(RANDOM.nextInt(255), RANDOM.nextInt(255), RANDOM.nextInt(255));
+    private void init(int initialColour) {
+        mColour = initialColour;
+        mAlpha = Color.alpha(initialColour);
+    }
+
+    private int pickColour() {
+        return Color.argb(mAlpha, RANDOM.nextInt(255), RANDOM.nextInt(255), RANDOM.nextInt(255));
     }
 
     /**
@@ -36,6 +44,26 @@ public class ColourShifter {
      */
     public int getColour() {
         return mColour;
+    }
+
+    /**
+     * Gets the current alpha value of the generated colours.
+     * @return the current alpha.
+     */
+    public int getAlpha() {
+        return mAlpha;
+    }
+
+    /**
+     * Sets the alpha value to use when generating colours.
+     * @param alpha the new alpha to use.
+     * @throws IllegalArgumentException if alpha is not between 0 and 255.
+     */
+    public void setAlpha(int alpha) {
+        if (alpha < 0 || alpha > 255) {
+            throw new IllegalArgumentException("alpha must be between 0 and 255");
+        }
+        mAlpha = alpha;
     }
 
     /**
@@ -75,6 +103,6 @@ public class ColourShifter {
         if (blue > Color.blue(mTargetColour))
             blue -= COLOUR_CHANGE_SPEED;
 
-        mColour = Color.rgb(red, green, blue);
+        mColour = Color.argb(mAlpha, red, green, blue);
     }
 }
