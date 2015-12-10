@@ -1,6 +1,5 @@
 package com.csvlt.android.simplespectrumanalyser.utils;
 
-import android.animation.ArgbEvaluator;
 import android.graphics.Color;
 
 import java.util.Random;
@@ -10,32 +9,129 @@ import java.util.Random;
  */
 public class ColourShifter {
 
-    private static final Random RANDOM = new Random();
+    public static class Builder {
+
+        private static final int DEFAULT_COLOUR_FRAME_COUNT_THRESHOLD = 600;
+        private static final Palette DEFAULT_PALETTE = new Palette(Color.BLACK, Color.WHITE);
+
+        private int colour;
+        private int alphaMode = ALPHA_MODE_FIXED;
+        private int minAlpha = 0;
+        private int threshold = DEFAULT_COLOUR_FRAME_COUNT_THRESHOLD;
+        private Palette palette = DEFAULT_PALETTE;
+
+        private boolean isColourSet = false;
+
+        public Builder() {}
+
+        public Builder alphaMode(int mode) {
+            alphaMode = mode;
+            return this;
+        }
+
+        public Builder minAlpha(int min) {
+            // todo: if min > 255 throw
+            minAlpha = min;
+            return this;
+        }
+
+        public Builder initialColour(int initialColour) {
+            colour = initialColour;
+            isColourSet = true;
+            return this;
+        }
+
+        public Builder palette(Palette colourPalette) {
+            palette = colourPalette;
+            return this;
+        }
+
+        public ColourShifter build() {
+            if (!isColourSet) {
+                colour = pickColour(DEFAULT_ALPHA, palette);
+                isColourSet = true;
+            }
+            return new ColourShifter(this);
+        }
+    }
+
+    /**
+     * Used to set the range of colours that the colour shifter should produce.
+     */
+    public static class Palette {
+        int minRed;
+        int maxRed;
+        int minGreen;
+        int maxGreen;
+        int minBlue;
+        int maxBlue;
+
+        // TODO: Santise input.
+        public Palette(int min, int max) {
+            minRed = Color.red(min);
+            minGreen = Color.green(min);
+            minBlue = Color.blue(min);
+            maxRed = Color.red(max);
+            maxGreen = Color.green(max);
+            maxBlue = Color.blue(max);
+        }
+    }
+
+    public static class Randomiser extends Random {
+        @Override
+        public int nextInt(int n) {
+            if (n == 0) {
+                return 0;
+            }
+            return super.nextInt(n);
+        }
+    }
+
+    public static final int ALPHA_MODE_RANDOM = 0;
+    public static final int ALPHA_MODE_FIXED = 1;
+
+    private static final Random RANDOM = new Randomiser();
     private static final int COLOUR_CHANGE_SPEED = 1;
 
-    private static final int COLOUR_FRAME_COUNT_THRESHOLD = 600;
+    private int mFrameCountThreshold;
     private int mFrameCount;
 
     private static final int DEFAULT_ALPHA = 255;
     private int mAlpha = DEFAULT_ALPHA;
+    private int mAlphaMode;
+    private int mAlphaMin;
     private int mColour;
     private int mTargetColour;
+    private Palette mPalette;
 
-    public ColourShifter() {
-        init(pickColour());
+    private ColourShifter(Builder builder) {
+        init(builder);
     }
 
-    public ColourShifter(int initialColour) {
-        init(initialColour);
+    private void init(Builder builder) {
+        mColour = builder.colour;
+        mPalette = builder.palette;
+        mAlpha = Color.alpha(builder.colour);
+        mAlphaMode = builder.alphaMode;
+        mAlphaMin = builder.minAlpha;
+        mFrameCountThreshold = builder.threshold;
     }
 
-    private void init(int initialColour) {
-        mColour = initialColour;
-        mAlpha = Color.alpha(initialColour);
+    private static int pickColour(int alpha, Palette palette) {
+        return Color.argb(alpha,
+                RANDOM.nextInt(palette.maxRed - palette.minRed) + palette.minRed,
+                RANDOM.nextInt(palette.maxGreen - palette.minGreen) + palette.minGreen,
+                RANDOM.nextInt(palette.maxBlue - palette.minBlue) + palette.minBlue);
     }
 
     private int pickColour() {
-        return Color.argb(mAlpha, RANDOM.nextInt(255), RANDOM.nextInt(255), RANDOM.nextInt(255));
+        if (mAlphaMode == ALPHA_MODE_RANDOM) {
+            mAlpha = RANDOM.nextInt(255);
+        }
+        if (mAlpha < mAlphaMin) {
+            mAlpha = mAlphaMin;
+        }
+        return pickColour(mAlpha, mPalette);
     }
 
     /**
@@ -77,7 +173,7 @@ public class ColourShifter {
 
     private void shiftColour() {
         // Change the target colour every X frames
-        if (mFrameCount % COLOUR_FRAME_COUNT_THRESHOLD == 0) {
+        if (mFrameCount % mFrameCountThreshold == 0) {
             mTargetColour = pickColour();
         }
 

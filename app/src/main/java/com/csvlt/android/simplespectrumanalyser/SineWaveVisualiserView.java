@@ -44,7 +44,11 @@ public class SineWaveVisualiserView extends View {
     private void init() {
         setBackgroundColor(Color.rgb(32, 32, 48));
 
-        mColourShifter = new ColourShifter(Color.argb(192, 0, 128, 0));
+        ColourShifter.Builder builder = new ColourShifter.Builder();
+        builder.initialColour(Color.argb(128, 0, 128, 0));
+        builder.palette(new ColourShifter.Palette(Color.rgb(0, 48, 48), Color.rgb(0, 255, 255)));
+
+        mColourShifter = builder.build();
 
         mPaint = new Paint();
         mPaint.setAntiAlias(true);
