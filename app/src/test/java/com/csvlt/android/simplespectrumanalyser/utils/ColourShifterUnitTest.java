@@ -51,6 +51,23 @@ public class ColourShifterUnitTest {
         shifter.setAlpha(500);
     }
 
+    @Test
+    public void colourShifterHonoursPaletteWhenInitialColourNotSet() {
+        ColourShifter shifter = new ColourShifter.Builder()
+                .palette(new ColourShifter.Palette(Color.CYAN, Color.CYAN))
+                .build();
+        assertThat(shifter.getColour(), is(Color.CYAN));
+    }
+
+    @Test
+    public void colourShifterHonoursPaletteWhenShiftingColour() {
+        ColourShifter shifter = new ColourShifter.Builder()
+                .palette(new ColourShifter.Palette(Color.MAGENTA, Color.MAGENTA))
+                .build();
+        shifter.step();
+        assertThat(shifter.getColour(), is(Color.MAGENTA));
+    }
+
     private void assertValidColour(int c) {
         int r = Color.red(c);
         int g = Color.green(c);
